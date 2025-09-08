@@ -1,0 +1,137 @@
+@startuml Finite-State-Machine-For-Go (Beautified)
+
+' ==============================================
+' 样式配置：统一格式、颜色区分包、接口/结构体样式
+' ==============================================
+skinparam backgroundColor White
+skinparam packageBackgroundColor<<design>> #E8F4F8  ' 浅蓝色：设计层
+skinparam packageBackgroundColor<<fsm_impl>> #FFF8E1  ' 浅黄色：实现层
+skinparam packageBackgroundColor<<runtime>> #F1F8E9  ' 浅绿色：运行时层
+skinparam interface {
+    BackgroundColor #B3E5FC
+    BorderColor #0288D1
+    FontColor #01579B
+    StereotypeFontColor #0277BD
+}
+skinparam class {
+    BackgroundColor #FFECB3
+    BorderColor #FF8F00
+    FontColor #E65100
+}
+skinparam arrow {
+    Color #555555
+    Thickness 1.2
+}
+
+
+' ==============================================
+' 1. design包（核心接口与数据结构）
+' ==============================================
+package design <<design>> {
+    ' 核心接口（标注 <<interface>>  stereotype）
+    interface FSM <<interface>> {
+        + Init(constructors []*TransitionConstructor)  ' 初始化状态机转换规则
+        + Transition(tCtx *runtime.TransitionCtx) error  ' 执行状态转换
+        + DefaultInitialState() int64  ' 获取默认初始状态ID
+    }
+
+    interface Action <<interface>> {
+        + Execute(tCtx *runtime.TransitionCtx) error  ' 执行转换回调动作
+    }
+
+    interface Condition <<interface>> {
+        + IsSatisfied(tCtx *runtime.TransitionCtx) (bool, error)  ' 检查转换条件是否满足
+    }
+
+    interface State <<interface>> {
+        + GetDstState(tCtx *runtime.TransitionCtx) (*int64, error)  ' 动态获取目标状态ID
+    }
+
+    ' 数据结构（标注 <<struct>>  stereotype）
+    class Transition <<struct>> {
+        + EventType : string  ' 触发转换的事件类型
+        + DstStateID : *int64  ' 目标状态ID（可为nil，动态确定）
+        + IsForce : bool  ' 是否强制转换（忽略部分前置条件）
+        + DstState : State  ' 目标状态实例
+        + Callbacks : []Action  ' 转换执行时的回调动作列表
+        + Conditions : []Condition  ' 转换执行前的条件列表
+    }
+
+    class TransitionConstructor <<struct>> {
+        + AllowedSourceStateIDs : []int64  ' 允许的源状态ID列表（非空）
+        + AllowedDstStateIDs : []int64  ' 允许的目标状态ID列表（空表示全部）
+        + IsForce : bool  ' 强制转换标识
+        + EventType : string  ' 触发事件类型
+        + DstState : State  ' 目标状态实例
+        + TransitionCallbacks : []Action  ' 仅当前转换生效的回调
+        + GlobalCallbacks : []Action  ' 全局共享回调
+        + TransitionConditions : []Condition  ' 仅当前转换生效的条件
+        + GlobalConditions : []Condition  ' 全局共享条件
+    }
+}
+
+
+' ==============================================
+' 2. fsm_impl包（状态机实现层）
+' ==============================================
+package fsm_impl <<fsm_impl>> {
+    class DefaultFSM <<struct>> {
+        - mutex : sync.RWMutex  ' 并发控制锁
+        - transitions : map[int64]map[string]*design.Transition  ' 状态转换表：[源状态ID][事件名]→转换规则
+        + NewDefaultFSM() *DefaultFSM  ' 构造函数
+        + Init(...)  ' 实现FSM接口：初始化转换规则
+        + Transition(...) error  ' 实现FSM接口：执行状态转换
+        + DefaultInitialState() int64  ' 实现FSM接口：默认初始状态（返回0）
+    }
+
+    class SourceStateValidator <<struct>> {
+        - allowedSourceStateIDs : []int64  ' 允许的源状态ID列表
+        + IsSatisfied(...) (bool, error)  ' 实现Condition接口：校验源状态合法性
+    }
+
+    class TargetStateValidator <<struct>> {
+        - isForce : bool  ' 强制转换标识
+        - allowedDstStateIDs : []int64  ' 允许的目标状态ID列表
+        + Execute(...) error  ' 实现Action接口：校验目标状态合法性
+    }
+}
+
+
+' ==============================================
+' 3. runtime包（运行时上下文）
+' ==============================================
+package runtime <<runtime>> {
+    class TransitionCtx <<struct>> {
+        + Ctx : context.Context  ' 上下文
+        + EventName : string  ' 触发事件名
+        + SourceStateID : *int64  ' 源状态ID指针
+        + TargetStateID : *int64  ' 外部指定的目标状态ID
+        + Fact : interface{}  ' 业务数据载体
+        + InputExtra : map[string]string  ' 输入扩展信息
+        + OutputExtra : map[string]string  ' 输出扩展信息
+    }
+}
+
+
+' ==============================================
+' 核心关系连线（简化非关键依赖，突出核心逻辑）
+' ==============================================
+' 接口实现关系（带箭头和 "implements" 标签）
+fsm_impl.DefaultFSM ..|> design.FSM : implements
+fsm_impl.SourceStateValidator ..|> design.Condition : implements
+fsm_impl.TargetStateValidator ..|> design.Action : implements
+
+' 包含/组合关系（实心菱形表示强依赖）
+design.Transition o-- "1" design.State : has > DstState  ' 转换关联一个目标状态
+design.Transition *-- "*" design.Action : has > Callbacks  ' 转换包含多个回调动作
+design.Transition *-- "*" design.Condition : has > Conditions  ' 转换包含多个条件
+
+' 构造关系（虚线箭头表示创建）
+design.TransitionConstructor ..> design.Transition : constructs  ' 构造器创建转换实例
+
+' 核心依赖（箭头指向被依赖方）
+fsm_impl.DefaultFSM --> design.Transition : manages > transitions  ' 状态机管理转换规则
+design.Transition --> runtime.TransitionCtx : uses  ' 转换使用运行时上下文
+fsm_impl.SourceStateValidator --> runtime.TransitionCtx : uses  ' 源状态校验器使用上下文
+
+@enduml

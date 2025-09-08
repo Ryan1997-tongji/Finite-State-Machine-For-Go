@@ -18,11 +18,11 @@ func NewSourceStateValidator(allowedSourceStateIDs []int64) *SourceStateValidato
 }
 
 func (t *SourceStateValidator) IsSatisfied(tCtx *runtime.TransitionCtx) (bool, error) {
-	if tCtx.SourceStateID == nil {
+	if tCtx.SourceStateIDPtr == nil {
 		return false, fmt.Errorf("source state is empty")
 	}
-	if utils.SliceContains(t.allowedSourceStateIDs, *tCtx.SourceStateID) {
+	if utils.SliceContains(t.allowedSourceStateIDs, *tCtx.SourceStateIDPtr) {
 		return true, nil
 	}
-	return false, fmt.Errorf("source state: %v,not allowed", *tCtx.SourceStateID)
+	return false, fmt.Errorf("source state: %v,not allowed", *tCtx.SourceStateIDPtr)
 }

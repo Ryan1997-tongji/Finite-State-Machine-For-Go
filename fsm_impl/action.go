@@ -22,11 +22,11 @@ func (t *TargetStateValidator) Execute(tCtx *runtime.TransitionCtx) error {
 	if t.isForce {
 		return nil
 	}
-	if tCtx.TargetStateID == nil {
+	if tCtx.TargetStateIDPtr == nil {
 		return nil
 	}
-	if utils.SliceContains(t.allowedDstStateIDs, *tCtx.TargetStateID) {
+	if utils.SliceContains(t.allowedDstStateIDs, *tCtx.TargetStateIDPtr) {
 		return nil
 	}
-	return fmt.Errorf("target state: %v,not allowed", *tCtx.TargetStateID)
+	return fmt.Errorf("target state: %v,not allowed", *tCtx.TargetStateIDPtr)
 }

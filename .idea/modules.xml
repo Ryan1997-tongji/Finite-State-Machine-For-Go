@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/../Finite-State-Machine-For-Go1/.idea/Finite State Machine For Go.iml" filepath="$PROJECT_DIR$/../Finite-State-Machine-For-Go1/.idea/Finite State Machine For Go.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/Finite-State-Machine-For-Go.iml" filepath="$PROJECT_DIR$/.idea/Finite-State-Machine-For-Go.iml" />
     </modules>
   </component>
 </project>

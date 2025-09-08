@@ -13,8 +13,8 @@ type Transition struct {
 
 // TransitionConstructor Constructs for Transition
 type TransitionConstructor struct {
-	AllowedSourceStateIDs []int64 // empty means all state ID is allowed
-	AllowedDstStateIDs    []int64 // empty means all state ID is allowed
+	AllowedSourceStateIDs []int64 // not allow empty
+	AllowedDstStateIDs    []int64 // empty means allow all
 	IsForce               bool
 	EventType             string
 	DstState              State

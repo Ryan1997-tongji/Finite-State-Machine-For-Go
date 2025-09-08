@@ -8,4 +8,7 @@ type FSM interface {
 
 	// Transition Exec state transitions based on event context
 	Transition(tCtx *runtime.TransitionCtx) (err error)
+
+	// Default Initial state
+	DefaultInitialState() int64
 }
